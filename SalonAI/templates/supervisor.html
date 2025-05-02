@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salon AI Supervisor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --success: #4cc9f0;
+            --warning: #f8961e;
+            --danger: #f94144;
+            --light: #f8f9fa;
+            --dark: #212529;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        h1 {
+            color: var(--primary);
+            margin: 0;
+            font-weight: 500;
+        }
+        
+        .status-badge {
+            background: var(--primary);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            padding: 15px 20px;
+            background: var(--light);
+            border-bottom: 1px solid #eee;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-body {
+            padding: 20px;
+        }
+        
+        .question-item {
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--warning);
+            background: #fff9e6;
+            border-radius: 4px;
+            position: relative;
+        }
+        
+        .question-item.resolved {
+            border-left-color: var(--success);
+            background: #f0fdf4;
+        }
+        
+        .question-text {
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        
+        .question-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        .question-count {
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            margin-left: 5px;
+        }
+        
+        .answer-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .answer-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-family: inherit;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #3a56d4;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .answer-form {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Salon AI Supervisor</h1>
+            <span class="status-badge">Live</span>
+        </header>
+        
+        <div class="card">
+            <div class="card-header">
+                <span>Pending Questions</span>
+                <span id="pending-count">{{ pending_questions|length }} pending</span>
+            </div>
+            <div class="card-body">
+                {% if pending_questions %}
+                    {% for req in pending_questions %}
+                    <div class="question-item" id="question-{{ req['id'] }}">
+                        <div class="question-text">"{{ req['question'] }}" 
+                            {% if req['count'] > 1 %}<span class="question-count">{{ req['count'] }}</span>{% endif %}
+                        </div>
+                        <div class="question-meta">
+                            <span>Last asked: {{ req['last_asked'] }}</span>
+                        </div>
+                        <form class="answer-form" onsubmit="resolveQuestion(event, {{ req['id'] }})">
+                            <input type="text" class="answer-input" placeholder="Type your answer..." required>
+                            <button type="submit" class="btn btn-primary">Submit Answer</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <p>No pending questions! 🎉</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <span>Recently Learned</span>
+            </div>
+            <div class="card-body">
+                {% if recent_answers %}
+                    {% for answer in recent_answers %}
+                    <div class="question-item resolved">
+                        <div class="question-text"><strong>Q:</strong> {{ answer['question'] }}</div>
+                        <div><strong>A:</strong> {{ answer['answer'] }}</div>
+                        <div class="question-meta">
+                            <span>Added: {{ answer['timestamp'] }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <p>No learned responses yet</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+    async function resolveQuestion(event, requestId) {
+        event.preventDefault();
+        const form = event.target;
+        const answer = form.querySelector('.answer-input').value;
+        const questionItem = document.getElementById(`question-${requestId}`);
+        
+        try {
+            const response = await fetch('/resolve', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `id=${requestId}&answer=${encodeURIComponent(answer)}`
+            });
+            
+            if (response.ok) {
+                // Update UI
+                questionItem.classList.add('resolved');
+                questionItem.classList.remove('question-item');
+                questionItem.innerHTML = `
+                    <div class="question-text"><strong>Q:</strong> ${questionItem.querySelector('.question-text').textContent.replace('"', '').trim()}</div>
+                    <div><strong>A:</strong> ${answer}</div>
+                    <div class="question-meta">
+                        <span>Resolved just now</span>
+                    </div>
+                `;
+                
+                // Update pending count
+                const pendingCount = document.getElementById('pending-count');
+                const currentCount = parseInt(pendingCount.textContent) - 1;
+                pendingCount.textContent = currentCount > 0 ? `${currentCount} pending` : '0 pending';
+            }
+        } catch (error) {
+            alert('Error submitting answer. Please try again.');
+            console.error(error);
+        }
+    }
+
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+        fetch(window.location.href)
+            .then(res => res.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const newDoc = parser.parseFromString(html, 'text/html');
+                const newPending = newDoc.querySelector('.card-body').innerHTML;
+                document.querySelector('.card-body').innerHTML = newPending;
+            });
+    }, 30000);
+    </script>
+</body>
+</html>
